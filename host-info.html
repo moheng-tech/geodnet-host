@@ -1,0 +1,925 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GEODNET Host Program</title>
+  <!-- Leaflet map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    :root {
+      --blue:    #1a4fa0;
+      --light:   #e8f0fe;
+      --accent:  #2d7dd2;
+      --green:   #1a8a4a;
+      --bg:      #f5f7fb;
+      --card:    #ffffff;
+      --text:    #1c2b3a;
+      --muted:   #5a6a7a;
+      --radius:  12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    /* ── Hero ── */
+    header {
+      background: linear-gradient(135deg, var(--blue) 0%, var(--accent) 100%);
+      color: #fff;
+      padding: 64px 24px 56px;
+      text-align: center;
+    }
+    header .badge {
+      display: inline-block;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.35);
+      border-radius: 999px;
+      font-size: .78rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      margin-bottom: 20px;
+    }
+    header h1 {
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    header p {
+      font-size: 1.1rem;
+      opacity: .88;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+
+    /* ── Quick-stats bar ── */
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0;
+      background: var(--card);
+      border-bottom: 1px solid #e0e6f0;
+    }
+    .stat {
+      flex: 1 1 160px;
+      text-align: center;
+      padding: 22px 16px;
+      border-right: 1px solid #e0e6f0;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--blue);
+    }
+    .stat-label {
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── Main layout ── */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ── Section headings ── */
+    .section-title {
+      font-size: 1.45rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin: 52px 0 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--light);
+    }
+    .section-title:first-of-type { margin-top: 0; }
+
+    /* ── Cards / FAQ items ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(26,79,160,.07);
+      padding: 24px 28px;
+      margin-bottom: 16px;
+    }
+    .card h3 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .card h3 .icon {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      background: var(--light);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .9rem;
+      margin-top: 1px;
+    }
+    .card p, .card ul {
+      color: var(--muted);
+      font-size: .97rem;
+      padding-left: 34px;
+    }
+    .card ul { padding-left: 50px; }
+    .card li { margin-bottom: 4px; }
+
+    /* ── Equipment photos ── */
+    .photo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 580px) {
+      .photo-grid { grid-template-columns: 1fr; }
+    }
+    .photo-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(26,79,160,.07);
+      overflow: hidden;
+    }
+    .photo-card img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+      max-height: 320px;
+    }
+    .photo-card .photo-caption {
+      padding: 14px 18px;
+    }
+    .photo-card .photo-caption strong {
+      display: block;
+      font-size: .97rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .photo-card .photo-caption span {
+      font-size: .87rem;
+      color: var(--muted);
+    }
+
+    /* ── Map ── */
+    .map-wrapper {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(26,79,160,.07);
+      overflow: hidden;
+    }
+    #coverage-map {
+      height: 480px;
+      width: 100%;
+    }
+    .map-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      padding: 14px 20px;
+      border-top: 1px solid #e0e6f0;
+      align-items: center;
+    }
+    .map-legend span {
+      font-size: .83rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .map-note {
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 10px;
+      text-align: center;
+    }
+
+    /* ── Requirements checklist ── */
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .check-item {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(26,79,160,.07);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-size: .97rem;
+    }
+    .check-item .tick {
+      width: 26px;
+      height: 26px;
+      background: #e6f7ef;
+      border-radius: 50%;
+      color: var(--green);
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Payment timeline ── */
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      position: relative;
+      padding-left: 32px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 10px;
+      bottom: 10px;
+      width: 2px;
+      background: var(--light);
+    }
+    .tl-item {
+      position: relative;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 12px rgba(26,79,160,.07);
+      padding: 18px 22px;
+      margin-bottom: 14px;
+    }
+    .tl-item::before {
+      content: '';
+      position: absolute;
+      left: -26px;
+      top: 22px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid var(--bg);
+    }
+    .tl-item .amount {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--green);
+    }
+    .tl-item .when {
+      font-size: .82rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .tl-item .desc {
+      font-size: .93rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── CTA ── */
+    .cta-box {
+      background: linear-gradient(135deg, var(--blue), var(--accent));
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      text-align: center;
+      color: #fff;
+      margin-top: 52px;
+    }
+    .cta-box h2 {
+      font-size: 1.5rem;
+      margin-bottom: 10px;
+    }
+    .cta-box p {
+      opacity: .88;
+      margin-bottom: 22px;
+      font-size: 1rem;
+    }
+    .cta-box a {
+      display: inline-block;
+      background: #fff;
+      color: var(--blue);
+      font-weight: 700;
+      text-decoration: none;
+      border-radius: 999px;
+      padding: 12px 32px;
+      font-size: 1rem;
+      transition: opacity .15s;
+    }
+    .cta-box a:hover { opacity: .88; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted);
+      padding: 24px 16px 40px;
+    }
+
+    @media (max-width: 500px) {
+      .stat { flex: 1 1 45%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ HERO ══ -->
+<header>
+  <div class="badge">Host Partner Program</div>
+  <h1>Earn $500/year Hosting a GPS Base Station</h1>
+  <p>GEODNET is expanding its precision GPS network. We're looking for property owners willing to host a small, all-in-one antenna unit on their roof or outdoor space.</p>
+</header>
+
+<!-- ══ QUICK STATS ══ -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">$500</div>
+    <div class="stat-label">Annual payment</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">1 unit</div>
+    <div class="stat-label">Compact all-in-one device</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">$0</div>
+    <div class="stat-label">Cost to host</div>
+  </div>
+
+</div>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+  <!-- About -->
+  <h2 class="section-title">What Is the Program?</h2>
+  <div class="card">
+    <h3><span class="icon">📡</span>A single compact device — that's it</h3>
+    <p>The station is an all-in-one unit that combines the antenna and GPS receiver in a single weatherproof enclosure. It mounts outside (typically on a roof or pole), plugs into your internet connection, and GEODNET handles everything else remotely. You won't need to interact with it on a day-to-day basis.</p>
+  </div>
+  <div class="card">
+    <h3><span class="icon">🌐</span>Part of a growing precision GPS network</h3>
+    <p>GEODNET operates a global network of high-accuracy GPS reference stations. Your location helps improve positioning accuracy for commercial and industrial applications in your area — including surveying, autonomous vehicles, and precision agriculture.</p>
+  </div>
+
+  <!-- Equipment photos -->
+  <h2 class="section-title">What the Equipment Looks Like</h2>
+  <div class="photo-grid">
+    <div class="photo-card">
+      <img src="wb200.png" alt="WB200 station installed on a rooftop chimney" />
+      <div class="photo-caption">
+        <strong>Installed Unit</strong>
+        <span>The WB200 mounts on any elevated outdoor surface with a clear sky view. Small footprint, weatherproof enclosure.</span>
+      </div>
+    </div>
+    <div class="photo-card">
+      <img src="wb200_parts.png" alt="WB200 box contents: antenna, pole, power adapter, and cable" />
+      <div class="photo-caption">
+        <strong>What's in the Box</strong>
+        <span>Everything needed for installation: the antenna/receiver unit, mounting pole, power adapter, and cable. GEODNET provides and ships all of it.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Coverage map -->
+  <h2 class="section-title">Areas We're Looking to Cover</h2>
+  <div class="map-wrapper">
+    <div id="coverage-map"></div>
+    <div class="map-legend">
+      <span><span class="dot" style="background:#e05c2a"></span> Highest Priority</span>
+      <span><span class="dot" style="background:#9b59b6"></span> High Priority</span>
+      <span><span class="dot" style="background:#27ae60"></span> Lower Priority</span>
+    </div>
+  </div>
+  <p class="map-note">Click any marker to see the city name and priority group. We are actively seeking hosts near these locations.</p>
+
+  <!-- Requirements -->
+  <h2 class="section-title">Host Requirements</h2>
+  <div class="checklist">
+    <div class="check-item">
+      <div class="tick">&#10003;</div>
+      <span>A clear view of the sky — a rooftop, pole, or elevated outdoor area works well</span>
+    </div>
+    <div class="check-item">
+      <div class="tick">&#10003;</div>
+      <span>Internet access at the mounting location — ethernet preferred for reliability, Wi-Fi also supported</span>
+    </div>
+    <div class="check-item">
+      <div class="tick">&#10003;</div>
+      <span>Willingness to be available for occasional troubleshooting if needed</span>
+    </div>
+  </div>
+
+  <!-- Payment -->
+  <h2 class="section-title">Payment Structure</h2>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="amount">$250</div>
+      <div class="when">At installation</div>
+      <div class="desc">Paid when the station is set up and first comes online.</div>
+    </div>
+    <div class="tl-item">
+      <div class="amount">$250</div>
+      <div class="when">After 12 months of operation</div>
+      <div class="desc">Paid after the station has been online for one full year.</div>
+    </div>
+    <div class="tl-item">
+      <div class="amount">$500/yr</div>
+      <div class="when">Every year after that</div>
+      <div class="desc">Annual payment continues as long as the station remains online and operational.</div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <h2 class="section-title">Frequently Asked Questions</h2>
+
+  <div class="card">
+    <h3><span class="icon">🔧</span>Who installs and maintains the equipment?</h3>
+    <p>The physical installation will be done by you, the participant. GEODNET provides all equipment and manages the system remotely. You don't need any technical expertise to be a host.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">💸</span>Is there any cost to me as a host?</h3>
+    <p>GEODNET supplies the hardware and manages the station remotely at no cost to you. The host is responsible for the physical installation — GEODNET does not cover installation labor. The only things you provide are a mounting location, the installation itself, and an internet connection.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">⚡</span>How much power does it use?</h3>
+    <p>The unit runs on 12V and uses less than 5W — less than a phone charger. It is designed to run continuously at minimal energy cost.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">📶</span>Does it affect my internet speed?</h3>
+    <p>The station uses approximately 10 GB per month to transmit GPS correction data. This is a modest amount — roughly equivalent to streaming a few hours of video — and is unlikely to noticeably impact your normal internet use on most home plans.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">🏠</span>Will it damage my roof or property?</h3>
+    <p>The unit is compact and lightweight. It mounts using non-invasive hardware designed to avoid property damage. If you have specific concerns about your property, we're happy to discuss them before you commit to installation.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">🚚</span>What happens if the program ends or I want to stop?</h3>
+    <p>If you decide to leave the program or GEODNET discontinues service, we simply arrange to have the equipment shipped back to us. There is no penalty for ending participation.</p>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">📋</span>Is there a contract?</h3>
+    <p>Yes — a simple host agreement is provided before installation. It outlines the payment terms, equipment ownership (GEODNET's), and the process for ending the arrangement.</p>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-box">
+    <h2>Interested in Becoming a Host?</h2>
+    <p>If your property has an outdoor area with a clear view of the sky, you may qualify. Email us at <strong>hosts@hyfix.ai</strong> with your property address and photos of the intended installation location. We'll confirm site suitability at no cost to you.</p>
+    <a href="mailto:hosts@hyfix.ai?subject=GEODNET Host Application&body=Hi,%0A%0AI am interested in hosting a GEODNET station.%0A%0AProperty address:%0A%0AInstallation location photos are attached.%0A%0AThanks">Get in Touch</a>
+  </div>
+
+</main>
+
+<footer>
+  &copy; 2026 GEODNET &mdash; Base Station Host Program &mdash; All equipment remains property of GEODNET.
+</footer>
+
+<script>
+  // ── Map setup ──
+  const map = L.map('coverage-map', { scrollWheelZoom: false }).setView([39.5, -98.35], 4);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18
+  }).addTo(map);
+
+  const tabColors = { 'rx-1': '#e05c2a', 'rx-2': '#9b59b6', 'rx-3': '#27ae60' };
+  const tabLabels = { 'rx-1': 'Highest Priority', 'rx-2': 'High Priority', 'rx-3': 'Lower Priority' };
+
+  function makeIcon(color) {
+    return L.divIcon({
+      className: '',
+      html: `<svg width="22" height="28" viewBox="0 0 22 28" xmlns="http://www.w3.org/2000/svg">
+        <path d="M11 0C4.9 0 0 4.9 0 11c0 7.7 11 17 11 17s11-9.3 11-17C22 4.9 17.1 0 11 0z"
+              fill="${color}" stroke="#fff" stroke-width="1.5"/>
+        <circle cx="11" cy="11" r="4.5" fill="#fff" fill-opacity="0.9"/>
+      </svg>`,
+      iconSize: [22, 28],
+      iconAnchor: [11, 28],
+      popupAnchor: [0, -28]
+    });
+  }
+
+  const locations = [
+    {"lat":48.21158383,"lon":-113.4433083,"city":"South Browning","state":"Montana","tab":"rx-1"},
+    {"lat":48.72639354,"lon":-114.1552694,"city":"Columbia Falls","state":"Montana","tab":"rx-1"},
+    {"lat":48.57525437,"lon":-114.9017916,"city":"Eureka","state":"Montana","tab":"rx-1"},
+    {"lat":47.89180673,"lon":-115.0469488,"city":"Thompson Falls","state":"Montana","tab":"rx-1"},
+    {"lat":45.28097505,"lon":-108.1277932,"city":"Lovell","state":"Wyoming","tab":"rx-1"},
+    {"lat":45.67001479,"lon":-107.7130586,"city":"Hardin","state":"Montana","tab":"rx-1"},
+    {"lat":46.34433136,"lon":-108.5701768,"city":"Roundup","state":"Montana","tab":"rx-1"},
+    {"lat":46.01783951,"lon":-109.2475766,"city":"Ryegate","state":"Montana","tab":"rx-1"},
+    {"lat":37.26698433,"lon":-92.08793252,"city":"Cabool","state":"Missouri","tab":"rx-1"},
+    {"lat":37.55369998,"lon":-91.51421632,"city":"Salem","state":"Missouri","tab":"rx-1"},
+    {"lat":38.12380431,"lon":-91.47274286,"city":"Cuba","state":"Missouri","tab":"rx-1"},
+    {"lat":38.30377298,"lon":-92.08102028,"city":"Vienna","state":"Missouri","tab":"rx-1"},
+    {"lat":34.38543258,"lon":-93.72613419,"city":"Glenwood","state":"Arkansas","tab":"rx-1"},
+    {"lat":34.87109734,"lon":-93.38052202,"city":"Danville","state":"Arkansas","tab":"rx-1"},
+    {"lat":33.93724716,"lon":-93.28375062,"city":"Gurdon","state":"Arkansas","tab":"rx-1"},
+    {"lat":34.00059811,"lon":-92.8344548,"city":"Arkadelphia","state":"Arkansas","tab":"rx-1"},
+    {"lat":34.25352506,"lon":-92.53722834,"city":"Sheridan","state":"Arkansas","tab":"rx-1"},
+    {"lat":31.85267531,"lon":-95.55096643,"city":"Palestine","state":"Texas","tab":"rx-1"},
+    {"lat":31.79956111,"lon":-96.09012141,"city":"Fairfield","state":"Texas","tab":"rx-1"},
+    {"lat":31.32608261,"lon":-95.77215822,"city":"Cooper","state":"Texas","tab":"rx-1"},
+    {"lat":30.54555166,"lon":-96.69148658,"city":"Caldwell","state":"Texas","tab":"rx-1"},
+    {"lat":32.28821918,"lon":-89.55805146,"city":"Forest","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.58131656,"lon":-90.69165937,"city":"Lynchburg","state":"Mississippi","tab":"rx-1"},
+    {"lat":31.71096892,"lon":-90.24927579,"city":"Wesson","state":"Mississippi","tab":"rx-1"},
+    {"lat":31.0586875,"lon":-89.86219017,"city":"Varnado","state":"Louisiana","tab":"rx-1"},
+    {"lat":31.47430522,"lon":-88.67328431,"city":"Waynesboro","state":"Mississippi","tab":"rx-1"},
+    {"lat":30.46774437,"lon":-85.13421572,"city":"Blountstown","state":"Florida","tab":"rx-1"},
+    {"lat":36.3135571,"lon":-87.82999063,"city":"Tennessee Ridge","state":"Tennessee","tab":"rx-1"},
+    {"lat":36.81539027,"lon":-87.96823549,"city":"Cadiz","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.41323732,"lon":-87.58114987,"city":"Madisonville","state":"Kentucky","tab":"rx-1"},
+    {"lat":33.25758204,"lon":-85.74249314,"city":"Lineville","state":"Alabama","tab":"rx-1"},
+    {"lat":33.76134336,"lon":-85.41070546,"city":"Tallapoosa","state":"Georgia","tab":"rx-1"},
+    {"lat":33.99196215,"lon":-85.92221146,"city":"Glencoe","state":"Alabama","tab":"rx-1"},
+    {"lat":33.5763961,"lon":-86.28856036,"city":"Pell City","state":"Alabama","tab":"rx-1"},
+    {"lat":25.12923488,"lon":-80.45462699,"city":"Key Largo","state":"Florida","tab":"rx-1"},
+    {"lat":25.51874293,"lon":-80.93848402,"city":"Homestead","state":"Florida","tab":"rx-1"},
+    {"lat":26.06940289,"lon":-80.78641467,"city":"Weston","state":"Florida","tab":"rx-1"},
+    {"lat":37.35808126,"lon":-82.5144755,"city":"Pikeville","state":"Kentucky","tab":"rx-1"},
+    {"lat":36.98193623,"lon":-84.13194044,"city":"North Corbin","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.12597933,"lon":-83.59278546,"city":"Manchester","state":"Kentucky","tab":"rx-1"},
+    {"lat":38.57288379,"lon":-83.05363048,"city":"Portsmouth","state":"Ohio","tab":"rx-1"},
+    {"lat":34.73711238,"lon":-76.54229726,"city":"Harkers Island","state":"North Carolina","tab":"rx-1"},
+    {"lat":44.58623951,"lon":-73.10000008,"city":"Milton","state":"Vermont","tab":"rx-1"},
+    {"lat":31.49207605,"lon":-89.81380446,"city":"Prentiss","state":"Mississippi","tab":"rx-1"},
+    {"lat":37.7707532,"lon":-92.08793252,"city":"Fort Leonard Wood","state":"Missouri","tab":"rx-1"},
+    {"lat":38.39933045,"lon":-81.63453233,"city":"Charleston","state":"West Virginia","tab":"rx-1"},
+    {"lat":37.07762286,"lon":-84.7849946,"city":"Somerset","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.59970205,"lon":-83.69521206,"city":"Beattyville","state":"Kentucky","tab":"rx-1"},
+    {"lat":36.51991335,"lon":-87.27168023,"city":"Clarksville","state":"Tennessee","tab":"rx-1"},
+    {"lat":32.51145837,"lon":-85.08220802,"city":"Smiths Station","state":"Alabama","tab":"rx-1"},
+    {"lat":36.68765612,"lon":-84.62648078,"city":"Stearns","state":"Kentucky","tab":"rx-1"},
+    {"lat":32.98865898,"lon":-90.49644585,"city":"Yazoo City","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.69175813,"lon":-89.43638465,"city":"Walnut Grove","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.04012579,"lon":-90.79861283,"city":"Port Gibson","state":"Mississippi","tab":"rx-1"},
+    {"lat":31.84582819,"lon":-89.67910894,"city":"Magee","state":"Mississippi","tab":"rx-1"},
+    {"lat":48.58870566,"lon":-113.6097429,"city":"South Browning","state":"Montana","tab":"rx-1"},
+    {"lat":34.44569541,"lon":-93.02275994,"city":"Hot Springs","state":"Arkansas","tab":"rx-1"},
+    {"lat":29.9730781,"lon":-85.01285822,"city":"Wewahitchka","state":"Florida","tab":"rx-1"},
+    {"lat":31.44133943,"lon":-95.419341,"city":"Grapeland","state":"Texas","tab":"rx-1"},
+    {"lat":31.19089987,"lon":-96.58619284,"city":"Franklin","state":"Texas","tab":"rx-1"},
+    {"lat":31.43046475,"lon":-96.23740561,"city":"Jewett","state":"Texas","tab":"rx-1"},
+    {"lat":30.87417221,"lon":-95.70471237,"city":"Huntsville","state":"Texas","tab":"rx-1"},
+    {"lat":31.14727658,"lon":-95.98374216,"city":"Centerville","state":"Texas","tab":"rx-1"},
+    {"lat":30.79208701,"lon":-96.32618781,"city":"Bryan","state":"Texas","tab":"rx-1"},
+    {"lat":30.4685323,"lon":-96.18667292,"city":"Navasota","state":"Texas","tab":"rx-1"},
+    {"lat":30.16042182,"lon":-85.39329333,"city":"Callaway","state":"Florida","tab":"rx-1"},
+    {"lat":29.71857321,"lon":-85.25377844,"city":"Port Saint Joe","state":"Florida","tab":"rx-1"},
+    {"lat":43.98867845,"lon":-73.51391712,"city":"Port Henry","state":"New York","tab":"rx-1"},
+    {"lat":44.07103462,"lon":-72.54365444,"city":"Williamstown","state":"Vermont","tab":"rx-1"},
+    {"lat":44.58088359,"lon":-72.28364941,"city":"Hardwick","state":"Vermont","tab":"rx-1"},
+    {"lat":44.93332115,"lon":-72.52462968,"city":"Richford","state":"Vermont","tab":"rx-1"},
+    {"lat":45.07728487,"lon":-73.05732292,"city":"Bedford","state":"Quebec","tab":"rx-1"},
+    {"lat":44.32651685,"lon":-73.89441229,"city":"Lake Placid","state":"New York","tab":"rx-1"},
+    {"lat":44.8972733,"lon":-73.69148153,"city":"Dannemora","state":"New York","tab":"rx-1"},
+    {"lat":37.37670545,"lon":-92.62428691,"city":"Hartville","state":"Missouri","tab":"rx-1"},
+    {"lat":35.76036716,"lon":-91.33483107,"city":"Newark","state":"Arkansas","tab":"rx-1"},
+    {"lat":36.19335198,"lon":-91.29678155,"city":"Highland","state":"Arkansas","tab":"rx-1"},
+    {"lat":36.42602918,"lon":-90.77254376,"city":"Corning","state":"Arkansas","tab":"rx-1"},
+    {"lat":36.28239949,"lon":-90.22293963,"city":"Rector","state":"Arkansas","tab":"rx-1"},
+    {"lat":35.88088099,"lon":-89.98618708,"city":"Gosnell","state":"Arkansas","tab":"rx-1"},
+    {"lat":35.9152796,"lon":-90.66262294,"city":"Brookland","state":"Arkansas","tab":"rx-1"},
+    {"lat":33.01658513,"lon":-89.80016722,"city":"Durant","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.47710217,"lon":-90.12570198,"city":"Madison","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.08923079,"lon":-90.02846432,"city":"Florence","state":"Mississippi","tab":"rx-1"},
+    {"lat":32.85258883,"lon":-84.74380922,"city":"Pine Mountain","state":"Georgia","tab":"rx-1"},
+    {"lat":32.45918217,"lon":-84.37599722,"city":"Butler","state":"Georgia","tab":"rx-1"},
+    {"lat":32.10002758,"lon":-84.43941308,"city":"Preston","state":"Georgia","tab":"rx-1"},
+    {"lat":31.89106145,"lon":-85.0397499,"city":"Georgetown","state":"Georgia","tab":"rx-1"},
+    {"lat":46.17698724,"lon":-107.86946,"city":"Hardin","state":"Montana","tab":"rx-1"},
+    {"lat":45.91793087,"lon":-108.4021532,"city":"Lockwood","state":"Montana","tab":"rx-1"},
+    {"lat":37.29568759,"lon":-83.22182855,"city":"Hazard","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.53174319,"lon":-82.82442248,"city":"Prestonsburg","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.45763514,"lon":-82.24945201,"city":"Williamson","state":"West Virginia","tab":"rx-1"},
+    {"lat":37.05210572,"lon":-82.46929366,"city":"Clintwood","state":"Virginia","tab":"rx-1"},
+    {"lat":36.80773279,"lon":-83.28947213,"city":"Harlan","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.4845921,"lon":-84.29567047,"city":"Berea","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.18752676,"lon":-84.30412591,"city":"Mount Vernon","state":"Kentucky","tab":"rx-1"},
+    {"lat":36.76692719,"lon":-83.70378909,"city":"Pineville","state":"Kentucky","tab":"rx-1"},
+    {"lat":36.78053149,"lon":-82.61303628,"city":"Gate City","state":"Virginia","tab":"rx-1"},
+    {"lat":37.05210572,"lon":-82.90897697,"city":"Whitesburg","state":"Kentucky","tab":"rx-1"},
+    {"lat":31.87482848,"lon":-89.01486747,"city":"Sharon","state":"Mississippi","tab":"rx-1"},
+    {"lat":31.48437254,"lon":-89.30658044,"city":"Glendale","state":"Mississippi","tab":"rx-1"},
+    {"lat":34.94469808,"lon":-76.36974474,"city":"Harkers Island","state":"North Carolina","tab":"rx-1"},
+    {"lat":48.33391741,"lon":-114.3769843,"city":"Whitefish","state":"Montana","tab":"rx-1"},
+    {"lat":35.07166179,"lon":-93.18128956,"city":"Ola","state":"Arkansas","tab":"rx-1"},
+    {"lat":34.82102224,"lon":-93.67170555,"city":"Mount Ida","state":"Arkansas","tab":"rx-1"},
+    {"lat":38.37864205,"lon":-83.41313306,"city":"Morehead","state":"Kentucky","tab":"rx-1"},
+    {"lat":38.97516783,"lon":-83.14255872,"city":"Piketon","state":"Ohio","tab":"rx-1"},
+    {"lat":39.10704772,"lon":-82.66059818,"city":"Jackson","state":"Ohio","tab":"rx-1"},
+    {"lat":38.42521815,"lon":-81.95034053,"city":"Teays Valley","state":"West Virginia","tab":"rx-1"},
+    {"lat":38.04507648,"lon":-82.21245942,"city":"Chapmanville","state":"West Virginia","tab":"rx-1"},
+    {"lat":38.63111979,"lon":-82.67750907,"city":"Ironton","state":"Ohio","tab":"rx-1"},
+    {"lat":38.84303988,"lon":-82.06026136,"city":"Point Pleasant","state":"West Virginia","tab":"rx-1"},
+    {"lat":38.94876207,"lon":-81.58675626,"city":"Ravenswood","state":"West Virginia","tab":"rx-1"},
+    {"lat":38.84303988,"lon":-81.16398385,"city":"Grantsville","state":"West Virginia","tab":"rx-1"},
+    {"lat":36.86210615,"lon":-87.27938674,"city":"Elkton","state":"Kentucky","tab":"rx-1"},
+    {"lat":37.06227077,"lon":-87.60914922,"city":"Dawson Springs","state":"Kentucky","tab":"rx-1"},
+    {"lat":33.61644893,"lon":-85.79545558,"city":"Oxford","state":"Alabama","tab":"rx-1"},
+    {"lat":32.32646235,"lon":-84.7808018,"city":"Cusseta","state":"Georgia","tab":"rx-1"},
+    {"lat":42.98136856,"lon":-111.701423,"city":"Soda Springs","state":"Idaho","tab":"rx-2"},
+    {"lat":43.43641531,"lon":-111.390372,"city":"Victor","state":"Idaho","tab":"rx-2"},
+    {"lat":37.67466935,"lon":-90.05573298,"city":"Perryville","state":"Missouri","tab":"rx-2"},
+    {"lat":37.16747896,"lon":-90.16632887,"city":"Marble Hill","state":"Missouri","tab":"rx-2"},
+    {"lat":36.80149489,"lon":-89.64099838,"city":"Sikeston","state":"Missouri","tab":"rx-2"},
+    {"lat":36.93478543,"lon":-89.1018434,"city":"Wickliffe","state":"Kentucky","tab":"rx-2"},
+    {"lat":35.33689422,"lon":-92.24691412,"city":"Greenbrier","state":"Arkansas","tab":"rx-2"},
+    {"lat":31.57496146,"lon":-94.08902696,"city":"San Augustine","state":"Texas","tab":"rx-2"},
+    {"lat":31.0586875,"lon":-89.86219017,"city":"Varnado","state":"Louisiana","tab":"rx-2"},
+    {"lat":40.44669029,"lon":-88.32767215,"city":"Gibson City","state":"Illinois","tab":"rx-2"},
+    {"lat":36.3135571,"lon":-87.82999063,"city":"Tennessee Ridge","state":"Tennessee","tab":"rx-2"},
+    {"lat":36.81539027,"lon":-87.96823549,"city":"Cadiz","state":"Kentucky","tab":"rx-2"},
+    {"lat":37.41323732,"lon":-87.58114987,"city":"Madisonville","state":"Kentucky","tab":"rx-2"},
+    {"lat":37.73233474,"lon":-88.07883139,"city":"Shawneetown","state":"Illinois","tab":"rx-2"},
+    {"lat":38.36638386,"lon":-87.87146409,"city":"Mount Carmel","state":"Illinois","tab":"rx-2"},
+    {"lat":35.7183043,"lon":-87.8576396,"city":"Linden","state":"Tennessee","tab":"rx-2"},
+    {"lat":33.76134336,"lon":-85.41070546,"city":"Tallapoosa","state":"Georgia","tab":"rx-2"},
+    {"lat":33.5763961,"lon":-86.28856036,"city":"Pell City","state":"Alabama","tab":"rx-2"},
+    {"lat":31.4979989,"lon":-81.92002257,"city":"Jesup","state":"Georgia","tab":"rx-2"},
+    {"lat":31.56904354,"lon":-81.20114927,"city":"Darien","state":"Georgia","tab":"rx-2"},
+    {"lat":26.67957058,"lon":-81.29792067,"city":"Port LaBelle","state":"Florida","tab":"rx-2"},
+    {"lat":35.9097283,"lon":-75.76812601,"city":"Manteo","state":"North Carolina","tab":"rx-2"},
+    {"lat":39.03802107,"lon":-79.94312098,"city":"Belington","state":"West Virginia","tab":"rx-2"},
+    {"lat":39.61780244,"lon":-80.96613299,"city":"Paden City","state":"West Virginia","tab":"rx-2"},
+    {"lat":38.72465988,"lon":-83.60660995,"city":"Manchester","state":"Ohio","tab":"rx-2"},
+    {"lat":38.57288379,"lon":-83.05363048,"city":"Portsmouth","state":"Ohio","tab":"rx-2"},
+    {"lat":41.73827071,"lon":-70.01713955,"city":"East Harwich","state":"Massachusetts","tab":"rx-2"},
+    {"lat":29.79481217,"lon":-93.54641586,"city":"Cameron","state":"Louisiana","tab":"rx-2"},
+    {"lat":29.77069338,"lon":-92.74459564,"city":"Lake Arthur","state":"Louisiana","tab":"rx-2"},
+    {"lat":39.87925161,"lon":-87.82307838,"city":"Chrisman","state":"Illinois","tab":"rx-2"},
+    {"lat":39.355354,"lon":-88.1133926,"city":"Greenup","state":"Illinois","tab":"rx-2"},
+    {"lat":38.88151462,"lon":-87.61571108,"city":"Palestine","state":"Illinois","tab":"rx-2"},
+    {"lat":37.42977616,"lon":-76.65289315,"city":"Gloucester Courthouse","state":"Virginia","tab":"rx-2"},
+    {"lat":37.40772356,"lon":-75.83724844,"city":"Eastville","state":"Virginia","tab":"rx-2"},
+    {"lat":26.10061255,"lon":-81.56058592,"city":"Lely Resort","state":"Florida","tab":"rx-2"},
+    {"lat":29.69830183,"lon":-93.88511579,"city":"Port Arthur","state":"Texas","tab":"rx-2"},
+    {"lat":43.50997521,"lon":-112.8122203,"city":"Moreland","state":"Idaho","tab":"rx-2"},
+    {"lat":37.07762286,"lon":-84.7849946,"city":"Somerset","state":"Kentucky","tab":"rx-2"},
+    {"lat":37.34702983,"lon":-85.31997876,"city":"Campbellsville","state":"Kentucky","tab":"rx-2"},
+    {"lat":36.51991335,"lon":-87.27168023,"city":"Clarksville","state":"Tennessee","tab":"rx-2"},
+    {"lat":37.28372725,"lon":-88.12369204,"city":"Marion","state":"Kentucky","tab":"rx-2"},
+    {"lat":45.02615532,"lon":-68.55714178,"city":"Greenbush","state":"Maine","tab":"rx-2"},
+    {"lat":32.51145837,"lon":-85.08220802,"city":"Smiths Station","state":"Alabama","tab":"rx-2"},
+    {"lat":32.54503024,"lon":-81.93174575,"city":"Statesboro","state":"Georgia","tab":"rx-2"},
+    {"lat":32.37704434,"lon":-93.00294571,"city":"Arcadia","state":"Louisiana","tab":"rx-2"},
+    {"lat":30.18202478,"lon":-84.82957661,"city":"Bristol","state":"Florida","tab":"rx-2"},
+    {"lat":38.73378913,"lon":-80.15341878,"city":"Buckhannon","state":"West Virginia","tab":"rx-2"},
+    {"lat":30.65854884,"lon":-89.9614617,"city":"Bogalusa","state":"Louisiana","tab":"rx-2"},
+    {"lat":35.67244806,"lon":-101.4216523,"city":"Borger","state":"Texas","tab":"rx-2"},
+    {"lat":35.25739961,"lon":-102.5187467,"city":"Vega","state":"Texas","tab":"rx-2"},
+    {"lat":35.63104052,"lon":-102.2967911,"city":"Channing","state":"Texas","tab":"rx-2"},
+    {"lat":35.4081043,"lon":-101.9289792,"city":"Amarillo","state":"Texas","tab":"rx-2"},
+    {"lat":35.77587213,"lon":-101.7704395,"city":"Fritch","state":"Texas","tab":"rx-2"},
+    {"lat":31.44133943,"lon":-95.419341,"city":"Grapeland","state":"Texas","tab":"rx-2"},
+    {"lat":30.95072106,"lon":-94.2271228,"city":"Sam Rayburn","state":"Texas","tab":"rx-2"},
+    {"lat":29.80710138,"lon":-93.26320171,"city":"Cameron","state":"Louisiana","tab":"rx-2"},
+    {"lat":30.85502534,"lon":-90.65680982,"city":"Greensburg","state":"Louisiana","tab":"rx-2"},
+    {"lat":31.07088704,"lon":-90.30802258,"city":"Magnolia","state":"Mississippi","tab":"rx-2"},
+    {"lat":29.86239133,"lon":-90.05118834,"city":"Timberlane","state":"Louisiana","tab":"rx-2"},
+    {"lat":30.45754522,"lon":-84.39766431,"city":"Midway","state":"Florida","tab":"rx-2"},
+    {"lat":30.88511154,"lon":-84.77181789,"city":"Donalsonville","state":"Georgia","tab":"rx-2"},
+    {"lat":30.49050271,"lon":-84.9493823,"city":"Bristol","state":"Florida","tab":"rx-2"},
+    {"lat":29.94526826,"lon":-84.39766431,"city":"Crawfordville","state":"Florida","tab":"rx-2"},
+    {"lat":31.0763455,"lon":-84.18839197,"city":"Pelham","state":"Georgia","tab":"rx-2"},
+    {"lat":30.89331522,"lon":-81.44248517,"city":"Kings Bay Base","state":"Georgia","tab":"rx-2"},
+    {"lat":30.87143718,"lon":-81.88005462,"city":"Folkston","state":"Georgia","tab":"rx-2"},
+    {"lat":31.25357279,"lon":-81.63907434,"city":"Dock Junction","state":"Georgia","tab":"rx-2"},
+    {"lat":31.64500356,"lon":-82.23518344,"city":"Baxley","state":"Georgia","tab":"rx-2"},
+    {"lat":31.10090462,"lon":-82.18445075,"city":"Waycross","state":"Georgia","tab":"rx-2"},
+    {"lat":31.29033951,"lon":-81.30455568,"city":"Darien","state":"Georgia","tab":"rx-2"},
+    {"lat":31.90098018,"lon":-81.02552589,"city":"Skidaway Island","state":"Georgia","tab":"rx-2"},
+    {"lat":32.71420184,"lon":-82.75360811,"city":"Wrightsville","state":"Georgia","tab":"rx-2"},
+    {"lat":32.79993811,"lon":-82.30969708,"city":"Wadley","state":"Georgia","tab":"rx-2"},
+    {"lat":32.4994971,"lon":-83.01361314,"city":"Dublin","state":"Georgia","tab":"rx-2"},
+    {"lat":32.31659018,"lon":-82.39847928,"city":"Vidalia","state":"Georgia","tab":"rx-2"},
+    {"lat":36.202347,"lon":-75.87615795,"city":"Southern Shores","state":"North Carolina","tab":"rx-2"},
+    {"lat":36.55489665,"lon":-75.88567033,"city":"Currituck","state":"North Carolina","tab":"rx-2"},
+    {"lat":36.88673125,"lon":-76.10762585,"city":"Virginia Beach","state":"Virginia","tab":"rx-2"},
+    {"lat":37.14608002,"lon":-75.93640302,"city":"Cape Charles","state":"Virginia","tab":"rx-2"},
+    {"lat":37.42476809,"lon":-76.30421502,"city":"Mathews","state":"Virginia","tab":"rx-2"},
+    {"lat":45.11321889,"lon":-68.05381146,"city":"Lincoln","state":"Maine","tab":"rx-2"},
+    {"lat":44.64430098,"lon":-68.02844512,"city":"Cherryfield","state":"Maine","tab":"rx-2"},
+    {"lat":44.28097683,"lon":-68.56113835,"city":"Sedgwick","state":"Maine","tab":"rx-2"},
+    {"lat":40.45253921,"lon":-89.06665709,"city":"Twin Grove","state":"Illinois","tab":"rx-2"},
+    {"lat":39.93705503,"lon":-88.86372634,"city":"Forsyth","state":"Illinois","tab":"rx-2"},
+    {"lat":35.62241122,"lon":-92.32834623,"city":"Fairfield Bay","state":"Arkansas","tab":"rx-2"},
+    {"lat":35.84990935,"lon":-91.90134609,"city":"Melbourne","state":"Arkansas","tab":"rx-2"},
+    {"lat":35.76036716,"lon":-91.33483107,"city":"Newark","state":"Arkansas","tab":"rx-2"},
+    {"lat":35.5187864,"lon":-91.88866292,"city":"Heber Springs","state":"Arkansas","tab":"rx-2"},
+    {"lat":33.00946124,"lon":-87.74549332,"city":"Moundville","state":"Alabama","tab":"rx-2"},
+    {"lat":32.63106542,"lon":-87.42841401,"city":"Marion","state":"Alabama","tab":"rx-2"},
+    {"lat":32.75975961,"lon":-87.99915676,"city":"Eutaw","state":"Alabama","tab":"rx-2"},
+    {"lat":33.15894083,"lon":-88.286642,"city":"Aliceville","state":"Alabama","tab":"rx-2"},
+    {"lat":32.85258883,"lon":-84.74380922,"city":"Pine Mountain","state":"Georgia","tab":"rx-2"},
+    {"lat":43.33416903,"lon":-112.2155603,"city":"Shelley","state":"Idaho","tab":"rx-2"},
+    {"lat":37.4845921,"lon":-84.29567047,"city":"Berea","state":"Kentucky","tab":"rx-2"},
+    {"lat":37.18752676,"lon":-84.30412591,"city":"Mount Vernon","state":"Kentucky","tab":"rx-2"},
+    {"lat":37.11307542,"lon":-85.12430439,"city":"Russell Springs","state":"Kentucky","tab":"rx-2"},
+    {"lat":39.81164305,"lon":-80.6513723,"city":"Moundsville","state":"West Virginia","tab":"rx-2"},
+    {"lat":39.25511582,"lon":-79.92420376,"city":"Grafton","state":"West Virginia","tab":"rx-2"},
+    {"lat":38.99826472,"lon":-79.66208487,"city":"Parsons","state":"West Virginia","tab":"rx-2"},
+    {"lat":42.05562169,"lon":-70.20043837,"city":"Provincetown","state":"Massachusetts","tab":"rx-2"},
+    {"lat":41.28056642,"lon":-70.19726758,"city":"Nantucket","state":"Massachusetts","tab":"rx-2"},
+    {"lat":44.68427845,"lon":-68.60552946,"city":"Dedham","state":"Maine","tab":"rx-2"},
+    {"lat":32.5075579,"lon":-93.44129459,"city":"Haughton","state":"Louisiana","tab":"rx-2"},
+    {"lat":34.80881868,"lon":-87.20117384,"city":"Rogersville","state":"Alabama","tab":"rx-2"},
+    {"lat":34.43836245,"lon":-87.69158984,"city":"Russellville","state":"Alabama","tab":"rx-2"},
+    {"lat":34.88549646,"lon":-87.69158984,"city":"Underwood-Petersville","state":"Alabama","tab":"rx-2"},
+    {"lat":30.62541912,"lon":-81.46837998,"city":"Fernandina Beach","state":"Florida","tab":"rx-2"},
+    {"lat":30.24258847,"lon":-87.80785225,"city":"Gulf Shores","state":"Alabama","tab":"rx-2"},
+    {"lat":32.85258883,"lon":-93.15169549,"city":"Haynesville","state":"Louisiana","tab":"rx-2"},
+    {"lat":32.00641257,"lon":-93.25316087,"city":"Coushatta","state":"Louisiana","tab":"rx-2"},
+    {"lat":31.86941685,"lon":-93.802765,"city":"Mansfield","state":"Louisiana","tab":"rx-2"},
+    {"lat":31.25402678,"lon":-94.0310621,"city":"Sam Rayburn","state":"Texas","tab":"rx-2"},
+    {"lat":31.23586513,"lon":-94.42001272,"city":"Huntington","state":"Texas","tab":"rx-2"},
+    {"lat":39.39302893,"lon":-80.72852827,"city":"West Union","state":"West Virginia","tab":"rx-2"},
+    {"lat":39.02135402,"lon":-81.02446895,"city":"Grantsville","state":"West Virginia","tab":"rx-2"},
+    {"lat":39.35693533,"lon":-81.11747888,"city":"Saint Marys","state":"West Virginia","tab":"rx-2"},
+    {"lat":38.37864205,"lon":-83.41313306,"city":"Morehead","state":"Kentucky","tab":"rx-2"},
+    {"lat":38.97516783,"lon":-83.14255872,"city":"Piketon","state":"Ohio","tab":"rx-2"},
+    {"lat":37.27541936,"lon":-89.57926864,"city":"Cape Girardeau","state":"Missouri","tab":"rx-2"},
+    {"lat":37.64612789,"lon":-88.48851583,"city":"Harrisburg","state":"Illinois","tab":"rx-2"},
+    {"lat":36.5352818,"lon":-88.86901099,"city":"Fulton","state":"Kentucky","tab":"rx-2"},
+    {"lat":36.54892745,"lon":-88.26021873,"city":"Murray","state":"Kentucky","tab":"rx-2"},
+    {"lat":36.1590757,"lon":-88.133387,"city":"Camden","state":"Tennessee","tab":"rx-2"},
+    {"lat":33.61644893,"lon":-85.79545558,"city":"Oxford","state":"Alabama","tab":"rx-2"},
+    {"lat":32.32646235,"lon":-84.7808018,"city":"Cusseta","state":"Georgia","tab":"rx-2"},
+    {"lat":48.81777133,"lon":-121.585931,"city":"Agassiz","state":"British Columbia","tab":"rx-3"},
+    {"lat":47.29800407,"lon":-116.5538178,"city":"Saint Maries","state":"Idaho","tab":"rx-3"},
+    {"lat":46.50207283,"lon":-111.2452149,"city":"Townsend","state":"Montana","tab":"rx-3"},
+    {"lat":46.93941266,"lon":-111.4387577,"city":"Helena Valley Northeast","state":"Montana","tab":"rx-3"},
+    {"lat":40.42292238,"lon":-105.8329284,"city":"Estes Park","state":"Colorado","tab":"rx-3"},
+    {"lat":38.01998253,"lon":-97.90112916,"city":"South Hutchinson","state":"Kansas","tab":"rx-3"},
+    {"lat":41.14272383,"lon":-93.26992613,"city":"Melcher-Dallas","state":"Iowa","tab":"rx-3"},
+    {"lat":41.07998979,"lon":-93.92658925,"city":"Osceola","state":"Iowa","tab":"rx-3"},
+    {"lat":39.50276943,"lon":-92.32294879,"city":"Moberly","state":"Missouri","tab":"rx-3"},
+    {"lat":33.38814875,"lon":-101.1706203,"city":"Crosbyton","state":"Texas","tab":"rx-3"},
+    {"lat":34.04088755,"lon":-98.42645966,"city":"Wichita Falls","state":"Texas","tab":"rx-3"},
+    {"lat":34.30516596,"lon":-98.95179015,"city":"Frederick","state":"Oklahoma","tab":"rx-3"},
+    {"lat":34.87109734,"lon":-93.38052202,"city":"Danville","state":"Arkansas","tab":"rx-3"},
+    {"lat":34.25352506,"lon":-92.53722834,"city":"Sheridan","state":"Arkansas","tab":"rx-3"},
+    {"lat":35.33689422,"lon":-92.24691412,"city":"Greenbrier","state":"Arkansas","tab":"rx-3"},
+    {"lat":31.85267531,"lon":-95.55096643,"city":"Palestine","state":"Texas","tab":"rx-3"},
+    {"lat":31.79956111,"lon":-96.09012141,"city":"Fairfield","state":"Texas","tab":"rx-3"},
+    {"lat":29.72847139,"lon":-99.31813905,"city":"Medina","state":"Texas","tab":"rx-3"},
+    {"lat":29.44451665,"lon":-90.27692477,"city":"Galliano","state":"Louisiana","tab":"rx-3"},
+    {"lat":29.45661626,"lon":-91.39670819,"city":"Patterson","state":"Louisiana","tab":"rx-3"},
+    {"lat":34.04951849,"lon":-87.44981724,"city":"Double Springs","state":"Alabama","tab":"rx-3"},
+    {"lat":35.26606221,"lon":-87.56732538,"city":"Waynesboro","state":"Tennessee","tab":"rx-3"},
+    {"lat":33.99196215,"lon":-85.92221146,"city":"Glencoe","state":"Alabama","tab":"rx-3"},
+    {"lat":33.5763961,"lon":-86.28856036,"city":"Pell City","state":"Alabama","tab":"rx-3"},
+    {"lat":32.99003218,"lon":-82.25181025,"city":"Louisville","state":"Georgia","tab":"rx-3"},
+    {"lat":43.74038561,"lon":-73.81887339,"city":"Warrensburg","state":"New York","tab":"rx-3"},
+    {"lat":43.54964267,"lon":-74.35802837,"city":"Lake Pleasant","state":"New York","tab":"rx-3"},
+    {"lat":34.73711238,"lon":-76.54229726,"city":"Harkers Island","state":"North Carolina","tab":"rx-3"},
+    {"lat":40.94123821,"lon":-95.2744767,"city":"Red Oak","state":"Iowa","tab":"rx-3"},
+    {"lat":29.79481217,"lon":-93.54641586,"city":"Cameron","state":"Louisiana","tab":"rx-3"},
+    {"lat":29.21434765,"lon":-90.78151853,"city":"Dulac","state":"Louisiana","tab":"rx-3"},
+    {"lat":29.86713328,"lon":-89.31612294,"city":"Waveland","state":"Mississippi","tab":"rx-3"},
+    {"lat":30.64122808,"lon":-94.05100963,"city":"Kirbyville","state":"Texas","tab":"rx-3"},
+    {"lat":33.72669633,"lon":-94.83900537,"city":"Idabel","state":"Oklahoma","tab":"rx-3"},
+    {"lat":33.46060044,"lon":-95.43345829,"city":"Reno","state":"Texas","tab":"rx-3"},
+    {"lat":38.58916102,"lon":-79.5629476,"city":"Monterey","state":"Virginia","tab":"rx-3"},
+    {"lat":42.40775454,"lon":-78.55376007,"city":"Delevan","state":"New York","tab":"rx-3"},
+    {"lat":41.36442091,"lon":-77.65516844,"city":"Renovo","state":"Pennsylvania","tab":"rx-3"},
+    {"lat":41.27061822,"lon":-78.3187438,"city":"Shiloh","state":"Pennsylvania","tab":"rx-3"},
+    {"lat":37.42977616,"lon":-76.65289315,"city":"Gloucester Courthouse","state":"Virginia","tab":"rx-3"},
+    {"lat":40.15030923,"lon":-80.66199429,"city":"Tiltonsville","state":"Ohio","tab":"rx-3"},
+    {"lat":29.69830183,"lon":-93.88511579,"city":"Port Arthur","state":"Texas","tab":"rx-3"},
+    {"lat":32.27060278,"lon":-97.94951487,"city":"Glen Rose","state":"Texas","tab":"rx-3"},
+    {"lat":43.85553896,"lon":-115.4927885,"city":"Idaho City","state":"Idaho","tab":"rx-3"},
+    {"lat":48.26562133,"lon":-117.3001429,"city":"Newport","state":"Washington","tab":"rx-3"},
+    {"lat":48.02028977,"lon":-117.9044769,"city":"Chewelah","state":"Washington","tab":"rx-3"},
+    {"lat":48.38454547,"lon":-121.3818739,"city":"Darrington","state":"Washington","tab":"rx-3"},
+    {"lat":37.34702983,"lon":-85.31997876,"city":"Campbellsville","state":"Kentucky","tab":"rx-3"},
+    {"lat":36.51991335,"lon":-87.27168023,"city":"Clarksville","state":"Tennessee","tab":"rx-3"},
+    {"lat":34.6424402,"lon":-79.72245932,"city":"Bennettsville","state":"South Carolina","tab":"rx-3"},
+    {"lat":42.31576994,"lon":-77.43391597,"city":"Bath","state":"New York","tab":"rx-3"},
+    {"lat":45.11040197,"lon":-94.29582409,"city":"Dassel","state":"Minnesota","tab":"rx-3"},
+    {"lat":44.7867776,"lon":-94.19675295,"city":"Glencoe","state":"Minnesota","tab":"rx-3"},
+    {"lat":32.39385715,"lon":-98.37260153,"city":"Stephenville","state":"Texas","tab":"rx-3"},
+    {"lat":38.26667003,"lon":-75.15527974,"city":"West Ocean City","state":"Maryland","tab":"rx-3"},
+    {"lat":37.74931828,"lon":-76.35404054,"city":"Kilmarnock","state":"Virginia","tab":"rx-3"},
+    {"lat":45.1314441,"lon":-84.95589232,"city":"Boyne City","state":"Michigan","tab":"rx-3"},
+    {"lat":37.81222354,"lon":-93.40913739,"city":"Hermitage","state":"Missouri","tab":"rx-3"},
+    {"lat":31.28598425,"lon":-88.13359915,"city":"Chatom","state":"Alabama","tab":"rx-3"},
+    {"lat":31.20937951,"lon":-87.67291835,"city":"Atmore","state":"Alabama","tab":"rx-3"},
+    {"lat":33.66065178,"lon":-101.1235977,"city":"Crosbyton","state":"Texas","tab":"rx-3"},
+    {"lat":28.78149556,"lon":-98.36500775,"city":"Pleasanton","state":"Texas","tab":"rx-3"},
+    {"lat":31.01628511,"lon":-96.92229691,"city":"Rosebud","state":"Texas","tab":"rx-3"},
+    {"lat":31.19089987,"lon":-96.58619284,"city":"Franklin","state":"Texas","tab":"rx-3"},
+    {"lat":31.64771605,"lon":-96.47204429,"city":"Mexia","state":"Texas","tab":"rx-3"},
+    {"lat":31.36518991,"lon":-96.99205436,"city":"Marlin","state":"Texas","tab":"rx-3"},
+    {"lat":30.87417221,"lon":-95.70471237,"city":"Huntsville","state":"Texas","tab":"rx-3"},
+    {"lat":30.4685323,"lon":-96.18667292,"city":"Navasota","state":"Texas","tab":"rx-3"},
+    {"lat":29.25250857,"lon":-91.16413671,"city":"Amelia","state":"Louisiana","tab":"rx-3"},
+    {"lat":31.64500356,"lon":-82.23518344,"city":"Baxley","state":"Georgia","tab":"rx-3"},
+    {"lat":33.17405245,"lon":-82.65214273,"city":"Gibson","state":"Georgia","tab":"rx-3"},
+    {"lat":34.23934379,"lon":-79.5574487,"city":"Latta","state":"South Carolina","tab":"rx-3"},
+    {"lat":38.44932602,"lon":-75.06126413,"city":"Bethany Beach","state":"Delaware","tab":"rx-3"},
+    {"lat":38.07933783,"lon":-75.37200185,"city":"Snow Hill","state":"Maryland","tab":"rx-3"},
+    {"lat":37.62679587,"lon":-76.75446763,"city":"West Point","state":"Virginia","tab":"rx-3"},
+    {"lat":41.73105359,"lon":-79.45598332,"city":"Youngsville","state":"Pennsylvania","tab":"rx-3"},
+    {"lat":42.11939162,"lon":-79.26573574,"city":"Celoron","state":"New York","tab":"rx-3"},
+    {"lat":41.96339558,"lon":-79.66525566,"city":"Corry","state":"Pennsylvania","tab":"rx-3"},
+    {"lat":42.51473067,"lon":-77.99107692,"city":"Nunda","state":"New York","tab":"rx-3"},
+    {"lat":42.59443528,"lon":-77.68668079,"city":"Dansville","state":"New York","tab":"rx-3"},
+    {"lat":42.49126862,"lon":-78.24474037,"city":"Houghton","state":"New York","tab":"rx-3"},
+    {"lat":41.40005009,"lon":-78.01961406,"city":"Emporium","state":"Pennsylvania","tab":"rx-3"},
+    {"lat":39.45696681,"lon":-92.76380181,"city":"Salisbury","state":"Missouri","tab":"rx-3"},
+    {"lat":39.12186868,"lon":-93.04917318,"city":"Slater","state":"Missouri","tab":"rx-3"},
+    {"lat":39.17618529,"lon":-92.66233643,"city":"Fayette","state":"Missouri","tab":"rx-3"},
+    {"lat":36.56257067,"lon":-92.76380181,"city":"Bull Shoals","state":"Arkansas","tab":"rx-3"},
+    {"lat":36.89437189,"lon":-92.46574726,"city":"Ava","state":"Missouri","tab":"rx-3"},
+    {"lat":37.37670545,"lon":-92.62428691,"city":"Hartville","state":"Missouri","tab":"rx-3"},
+    {"lat":37.02160233,"lon":-92.70038594,"city":"Ava","state":"Missouri","tab":"rx-3"},
+    {"lat":32.22230118,"lon":-86.6547405,"city":"Mosses","state":"Alabama","tab":"rx-3"},
+    {"lat":31.80445224,"lon":-86.53636423,"city":"Greenville","state":"Alabama","tab":"rx-3"},
+    {"lat":32.04242978,"lon":-86.95913664,"city":"Mosses","state":"Alabama","tab":"rx-3"},
+    {"lat":32.50218412,"lon":-87.13247333,"city":"Valley Grande","state":"Alabama","tab":"rx-3"},
+    {"lat":33.09490956,"lon":-84.41404674,"city":"Zebulon","state":"Georgia","tab":"rx-3"},
+    {"lat":32.85258883,"lon":-84.74380922,"city":"Pine Mountain","state":"Georgia","tab":"rx-3"},
+    {"lat":32.68113542,"lon":-84.1434724,"city":"Reynolds","state":"Georgia","tab":"rx-3"},
+    {"lat":44.10683881,"lon":-115.7922149,"city":"Idaho City","state":"Idaho","tab":"rx-3"},
+    {"lat":43.67881667,"lon":-115.453997,"city":"Idaho City","state":"Idaho","tab":"rx-3"},
+    {"lat":43.76466891,"lon":-115.8767694,"city":"Idaho City","state":"Idaho","tab":"rx-3"},
+    {"lat":37.82743309,"lon":-98.16260546,"city":"Kingman","state":"Kansas","tab":"rx-3"},
+    {"lat":38.17535039,"lon":-97.90048657,"city":"Hutchinson","state":"Kansas","tab":"rx-3"},
+    {"lat":37.47785378,"lon":-98.09496188,"city":"Kingman","state":"Kansas","tab":"rx-3"},
+    {"lat":37.79389184,"lon":-97.79902119,"city":"Haven","state":"Kansas","tab":"rx-3"},
+    {"lat":37.05210572,"lon":-82.46929366,"city":"Clintwood","state":"Virginia","tab":"rx-3"},
+    {"lat":36.80773279,"lon":-83.28947213,"city":"Harlan","state":"Kentucky","tab":"rx-3"},
+    {"lat":37.4845921,"lon":-84.29567047,"city":"Berea","state":"Kentucky","tab":"rx-3"},
+    {"lat":36.78053149,"lon":-82.61303628,"city":"Gate City","state":"Virginia","tab":"rx-3"},
+    {"lat":40.38306635,"lon":-80.8965803,"city":"Cadiz","state":"Ohio","tab":"rx-3"},
+    {"lat":42.3510941,"lon":-77.71733179,"city":"Hornell","state":"New York","tab":"rx-3"},
+    {"lat":34.94469808,"lon":-76.36974474,"city":"Harkers Island","state":"North Carolina","tab":"rx-3"},
+    {"lat":34.80881868,"lon":-87.20117384,"city":"Rogersville","state":"Alabama","tab":"rx-3"},
+    {"lat":30.24258847,"lon":-87.80785225,"city":"Gulf Shores","state":"Alabama","tab":"rx-3"},
+    {"lat":29.95401231,"lon":-89.55813002,"city":"Pearlington","state":"Mississippi","tab":"rx-3"},
+    {"lat":29.08692616,"lon":-99.24807362,"city":"Pearsall","state":"Texas","tab":"rx-3"},
+    {"lat":29.39098167,"lon":-99.43409348,"city":"Sabinal","state":"Texas","tab":"rx-3"},
+    {"lat":34.20510321,"lon":-91.99329909,"city":"Pine Bluff","state":"Arkansas","tab":"rx-3"},
+    {"lat":35.07166179,"lon":-93.18128956,"city":"Ola","state":"Arkansas","tab":"rx-3"},
+    {"lat":34.70414196,"lon":-89.89423408,"city":"Coldwater","state":"Mississippi","tab":"rx-3"},
+    {"lat":34.42435032,"lon":-89.50105574,"city":"Oxford","state":"Mississippi","tab":"rx-3"},
+    {"lat":34.39281436,"lon":-90.09505098,"city":"Batesville","state":"Mississippi","tab":"rx-3"},
+    {"lat":34.64476574,"lon":-90.60660559,"city":"West Helena","state":"Arkansas","tab":"rx-3"},
+    {"lat":33.37203757,"lon":-93.61251742,"city":"Lewisville","state":"Arkansas","tab":"rx-3"},
+    {"lat":33.09490956,"lon":-93.44763618,"city":"Springhill","state":"Louisiana","tab":"rx-3"},
+    {"lat":33.66241942,"lon":-93.37999259,"city":"Prescott","state":"Arkansas","tab":"rx-3"},
+    {"lat":33.37203757,"lon":-93.31234901,"city":"Waldo","state":"Arkansas","tab":"rx-3"},
+    {"lat":32.52725901,"lon":-98.0072366,"city":"Oak Trail Shores","state":"Texas","tab":"rx-3"},
+    {"lat":32.78476172,"lon":-98.50610804,"city":"Palo Pinto","state":"Texas","tab":"rx-3"},
+    {"lat":33.22647824,"lon":-82.15749901,"city":"Hephzibah","state":"Georgia","tab":"rx-3"},
+    {"lat":39.10704772,"lon":-82.66059818,"city":"Jackson","state":"Ohio","tab":"rx-3"},
+    {"lat":39.50119686,"lon":-81.84887515,"city":"McConnelsville","state":"Ohio","tab":"rx-3"},
+    {"lat":39.19921594,"lon":-82.22091487,"city":"Athens","state":"Ohio","tab":"rx-3"},
+    {"lat":33.72956249,"lon":-95.2063694,"city":"Lone Star","state":"Texas","tab":"rx-3"},
+    {"lat":38.96856732,"lon":-104.0676791,"city":"Ellicott","state":"Colorado","tab":"rx-3"}
+  ];
+
+  locations.forEach(loc => {
+    const color = tabColors[loc.tab] || '#1a4fa0';
+    const label = tabLabels[loc.tab] || loc.tab;
+    L.marker([loc.lat, loc.lon], { icon: makeIcon(color) })
+      .addTo(map)
+      .bindPopup(`<strong>${loc.city}, ${loc.state}</strong><br><span style="color:#5a6a7a;font-size:.88rem">${label}</span>`);
+  });
+
+  // Fit map to markers
+  const bounds = L.latLngBounds(locations.map(l => [l.lat, l.lon]));
+  map.fitBounds(bounds, { padding: [32, 32] });
+</script>
+
+</body>
+</html>
